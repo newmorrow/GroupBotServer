@@ -1,6 +1,6 @@
 import pymysql
 
-db = pymysql.connect("localhost","root","","furrends" )
+db = pymysql.connect("localhost","root","","groupbot")
 
 cursor = db.cursor()
 

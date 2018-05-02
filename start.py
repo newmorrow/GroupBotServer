@@ -1,14 +1,15 @@
 import random
 import DBConnect
 import ListObj
-import json
 
 from flask import Flask, request
 from pymessenger.bot import Bot
 
+import model_service
+
 app = Flask(__name__)
 
-ACCESS_TOKEN = 'EAAa1SOnFK8cBAALWxr5s4An3GSb6KHRcd8X0vuk6rJN62gRLZB8KUu6T9pNrrzMr36MAG2x3djOVLpShYNfv4bmnuRnMYEi2fiZBUeZBQMjAvdPlolJcDJVwJ48RbH0Sux0sSAlplJZCAPWItkDxbd0i5EC6DRNtHRS3b9yjBwZDZD'
+ACCESS_TOKEN = 'EAAa1SOnFK8cBAKrh5Sv0ZADKdyWdsMdbtcLIjZBt2esiB66LnkALGpXPSAXZBWB79GuEPXXZCFkE4hlQPqFb67zqCqcS6opBElXNRxH8wuLPDD5JN45YadcKkk7UDndVSsCNtCTZA7ZBqzxBfHRxqvd1AmEdm6OTGhuVHdP4GwdjjgO3FuUO7Q'
 VERIFY_TOKEN = 'test_token'
 
 HIKING = ["https://www.banfftours.com/wp-content/uploads/2017/01/Hiking-Lake-Louise-1.jpg",
@@ -23,9 +24,18 @@ FOOD = ["https://www.rd.com/wp-content/uploads/2017/10/12_Citrus_Healthy-Holiday
         "https://www.boxpark.co.uk/assets/Uploads/_resampled/FillWyIxOTIwIiwiMTA4MCJd/Bao-Bao-Holder3.jpg",
         "https://pantograph0.goldbely.com/cfill-h630-w1200/uploads/merchant/main_image/559/hancock-gourmet-lobster-co.c62365d58493722415029905459b0cc6.jpg"]
 
+EXCEPTION_TEXT = "Sorry! I don't have any suggestions :( Please tell me any other interest of yours.\nDo you want more suggestions?"
+KEYWORD_RECEIVED_TEXT = "That’s great! What state do you live in?"
+GREETINGS = "Please share with me some interests or send me some photos of your interests."
+GREETINGS2_TEXT = "Welcome to Groupbot I can help you easily find groups for you based on your interests."
+
+
 bot = Bot(ACCESS_TOKEN)
 
 user_ids = {}
+
+recognizer = model_service.instance
+
 
 def send_groups_message(recipient_id, keyword, group_urls):
     images = HIKING
@@ -63,7 +73,7 @@ def send_groups_message(recipient_id, keyword, group_urls):
  
 def wrap_group_message(group_url, image_url):
     msg = {
-        "title": "Check it out!!",
+        "title": "Check it out!",
         "image_url": image_url,
         "buttons": [
             {
@@ -120,31 +130,44 @@ def receive_message():
                 print(message)
                 if message.get('postback'):
                     recipient_id = message['sender']['id']
-                    send_message(recipient_id, "Tell me your interest..")
+                    send_message(recipient_id, GREETINGS)
                 elif message.get('message'):
                     recipient_id = message['sender']['id']
                     if recipient_id in user_ids:
                         if user_ids[recipient_id].once:
-                            bot.send_raw(greet_btn(recipient_id, "We can help again"))
+                            user_ids[recipient_id].once = False
+                            bot.send_raw(greet_btn(recipient_id, "Do you want more suggestions?"))
                             return "Message Processed"
-                        if user_ids[recipient_id].interest==None:
-                            user_ids[recipient_id].interest = message['message'].get('text')
-                            send_message(recipient_id, "Ok now tell me your location..")
+                        if user_ids[recipient_id].interest is None:
+                            if message.get('message').get('attachments'):
+                                message = message.get('message')
+                                image_url = message.get('attachments')[0].get('payload').get('url')
+                                keyword = recognizer.recognize(image_url)
+                                print(keyword)
+                                if keyword is None:
+                                    bot.send_raw(greet_btn(recipient_id, EXCEPTION_TEXT))
+                                    return "Message Processed"
+                                else:
+                                    user_ids[recipient_id].interest = keyword.strip()
+                                    send_message(recipient_id, KEYWORD_RECEIVED_TEXT)
+                            else:
+                                user_ids[recipient_id].interest = message['message'].get('text')
+                                send_message(recipient_id, KEYWORD_RECEIVED_TEXT)
                         else:
                             user_ids[recipient_id].location = message['message'].get('text')
-                            response_sent_text = DBConnect.getURL(message['message'].get('text'), user_ids[recipient_id].interest)
-
-                            if len(response_sent_text)==0:
-                                send_message(recipient_id, "We currently do not have any suggestions. Please tell us any other interest of yours")
+                            response_sent_text = DBConnect.getURL(user_ids[recipient_id].location, user_ids[recipient_id].interest)
+                            if len(response_sent_text) == 0:
+                                bot.send_raw(greet_btn(recipient_id, EXCEPTION_TEXT))
+                                return "Message Processed"
                             else:
                                 str = send_groups_message(recipient_id, user_ids[recipient_id].interest, response_sent_text)
                                 print(str)
                                 bot.send_raw(str)
-                                user_ids[recipient_id].interest=None
+                                user_ids[recipient_id].interest =None
                                 user_ids[recipient_id].location = None
                                 user_ids[recipient_id].once = True
                     else:
-                        bot.send_raw(greet_btn(recipient_id, "Welcome to Groupbot I can help you easily find groups for you based on your interests."))
+                        bot.send_raw(greet_btn(recipient_id, GREETINGS2_TEXT))
                         user_ids[recipient_id] = ListObj.ListObj()
         return "Message Processed"
 
@@ -159,12 +182,6 @@ def verify_fb_token(token_sent):
 def send_message(recipient_id, response):
     bot.send_text_message(recipient_id, response)
     return 'Success'
-
-
-def get_message():
-    sample_responses = ["Awesone!", "Cool!", "Go Ahead!"]
-    return random.choice(sample_responses)
-
 
 if __name__ == '__main__':
     app.run()
