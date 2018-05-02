@@ -15,6 +15,10 @@ VERIFY_TOKEN = 'test_token'
 HIKING = ["https://www.banfftours.com/wp-content/uploads/2017/01/Hiking-Lake-Louise-1.jpg",
           "https://res.cloudinary.com/simpleview/image/upload/c_fill,f_auto,h_536,q_65,w_768/v1/clients/norway/hovdenhikingnorway_f5c75ba6-7f5c-43d5-919d-51452136b030.jpg",
           "https://www.kamloopshikingclub.net/wp-content/uploads/2014/09/hikers-silhouette.jpg"]
+
+SAFARI = ["https://www.zicasso.com/sites/default/files/styles/original_scaled_down/public/headerimages/tour/African-Safari-Lion-LT-Header.jpg",
+          "https://tcc.com.ua/storage/gallery/images/hotels/05c/05c5c45c8fd2b3cd3b24dea913499f28.jpg",
+          "https://d1ljaggyrdca1l.cloudfront.net/wp-content/uploads/2017/04/Giraffe-on-a-walking-safari-in-Etosha-Namibia-1600x900.jpg"]
  
 DOG = ["https://amp.businessinsider.com/images/528127d66bb3f7c12136f884-750-562.jpg",
        "https://www.europetnet.com/images/dogbreeds/255.jpg",
@@ -25,7 +29,7 @@ FOOD = ["https://www.rd.com/wp-content/uploads/2017/10/12_Citrus_Healthy-Holiday
         "https://pantograph0.goldbely.com/cfill-h630-w1200/uploads/merchant/main_image/559/hancock-gourmet-lobster-co.c62365d58493722415029905459b0cc6.jpg"]
 
 EXCEPTION_TEXT = "Sorry! I don't have any suggestions :( Please tell me any other interest of yours.\nDo you want more suggestions?"
-KEYWORD_RECEIVED_TEXT = "That’s great! What state do you live in?"
+KEYWORD_RECEIVED_TEXT = "That’s great! What place do you live in?"
 GREETINGS = "Please share with me some interests or send me some photos of your interests."
 GREETINGS2_TEXT = "Welcome to Groupbot I can help you easily find groups for you based on your interests."
 
@@ -46,6 +50,8 @@ def send_groups_message(recipient_id, keyword, group_urls):
         images = FOOD
     elif keyword.lower() == "dog":
         images = DOG
+    elif keyword.lower() == "safari":
+        images = SAFARI
  
     wrapped_list = []
     for i, group_url in enumerate(group_urls):
